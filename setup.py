@@ -2,6 +2,7 @@ import codecs
 from os.path import abspath, dirname, join
 from typing import List
 
+from Cython.Build import cythonize
 from setuptools import find_packages, setup
 
 
@@ -39,6 +40,7 @@ setup(
     url="https://github.com/573dev/pakdump",
     packages=find_packages(exclude=["tests"]),
     install_requires=REQUIREMENTS,
+    ext_modules=cythonize(["cython-deps/pakdec.pyx"], annotate=True, language_level=3),
     classifiers=[
         "Environment :: Console",
         "Intended Audience :: Developers",
@@ -52,5 +54,5 @@ setup(
     include_package_data=True,
     tests_require=TEST_DEPS,
     extras_require=EXTRAS,
-    entry_points={"console_scripts": ["test_cli = pakdump.template:main"]},
+    entry_points={"console_scripts": ["pakdump = pakdump.base:main"]},
 )

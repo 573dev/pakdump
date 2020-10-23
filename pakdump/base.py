@@ -1,0 +1,112 @@
+import argparse
+import logging
+from pathlib import Path
+from typing import Any, Optional, Sequence, Union
+
+from .dumper import PakDumper
+from .filegen import bruteforce_filenames
+
+
+logger = logging.getLogger(__name__)
+
+
+def main(args: Optional[Sequence[str]] = None) -> None:
+    p_args = parse_args(args)
+    logging.basicConfig(level=p_args.log_level)
+
+    # Create a dumper object, and dump the data
+    dumper = PakDumper(p_args.input, p_args.output, p_args.fast, p_args.force)
+    bruteforce_filenames(dumper)
+
+    # Dump the data
+    dumper.dump()
+
+
+def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Dump data from GFDM v8 '.pak' files",
+    )
+    parser.add_argument(
+        "-i",
+        "--input",
+        action=FullDirPath,
+        type=Path,
+        required=True,
+        help="Path to GFDM Data directory",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        action=FullDirPath,
+        type=Path,
+        default=Path.cwd(),
+        help="Path to output directory. Defaults to your current working directory",
+    )
+    parser.add_argument(
+        "-t", "--fast", action="store_true", help="Use Cython decryption code"
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="write out all extracted files even if they already exist",
+    )
+
+    logger_group_parent = parser.add_argument_group(
+        title="logging arguments",
+        description="Control what log level the log outputs (default: logger.ERROR)",
+    )
+    logger_group = logger_group_parent.add_mutually_exclusive_group()
+
+    logger_group.add_argument(
+        "-d",
+        "--debug",
+        dest="log_level",
+        action="store_const",
+        const=logging.DEBUG,
+        default=logging.ERROR,
+        help="Set log level to DEBUG",
+    )
+    logger_group.add_argument(
+        "-v",
+        "--verbose",
+        dest="log_level",
+        action="store_const",
+        const=logging.INFO,
+        default=logging.ERROR,
+        help="Set log level to INFO",
+    )
+
+    parsed_args = parser.parse_args(args)
+
+    if parsed_args.input.parts[-1] != "data":
+        raise argparse.ArgumentTypeError("input must be in the GFDM `data` directory")
+
+    return parsed_args
+
+
+class FullDirPath(argparse.Action):
+    """
+    Expand path to abspath and make sure it's a directory
+    """
+
+    def __call__(
+        self,
+        parse: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Union[str, Sequence[Any], None],
+        option_string: Optional[str] = None,
+    ) -> None:
+        """
+        Resolve the input path and make sure it doesn't exist (so we can make it
+        later), or that it's a directory.
+        """
+        full_path = Path(str(values)).resolve()
+        if full_path.exists() and not full_path.is_dir():
+            raise argparse.ArgumentTypeError(f"{self.dest} must be a directory")
+        setattr(namespace, self.dest, full_path)
+
+
+if __name__ == "__main__":
+    main()
