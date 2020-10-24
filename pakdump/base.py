@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, Sequence, Union
 
-from .dumper import PakDumper
-from .filegen import DEFAULT_FILELIST_PATH, load_filelist, test_filename
+from pakdump.dumper import PakDumper
+from pakdump.filegen import DEFAULT_FILELIST_PATH, load_filelist, test_filename
 
 
 logger = logging.getLogger(__name__)

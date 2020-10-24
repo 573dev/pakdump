@@ -7,8 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import pakdec
-
-from .crc import CRC16_CCITT_TABLE_REVERSE
+from pakdump.crc import CRC16_CCITT_TABLE_REVERSE
 
 
 logger = logging.getLogger(__name__)

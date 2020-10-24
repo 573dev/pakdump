@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from .dumper import PakDumper
+from pakdump.dumper import PakDumper
 
 
 logger = logging.getLogger(__name__)

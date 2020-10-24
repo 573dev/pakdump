@@ -25,7 +25,6 @@ jobs:
       - name: Run Code Linters
         run: tox -e check
 
-  
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -60,7 +59,7 @@ jobs:
         with:
           name: coverage_${{ matrix.python-version }}
           path: .coverage.*
-  
+
   coverage:
     needs: test
     runs-on: ubuntu-latest
