@@ -4,11 +4,11 @@ import re
 import struct
 from ctypes import c_ulong
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import pakdec
 
-from .crc import CRC16_CCITT_TABLE, CRC16_CCITT_TABLE_REVERSE
+from .crc import CRC16_CCITT_TABLE_REVERSE
 
 
 logger = logging.getLogger(__name__)
@@ -36,64 +36,31 @@ class PackInfo(object):
         return (
             f"PackInfo<crc32: {self.crc32}, crc16: {self.crc16}, "
             f"packid: {self.packid}, offset: {self.offset}, filesize: {self.filesize}, "
-            f"md5sum: {self.md5sum}, filename: {self.filename}>"
+            f'md5sum: {self.md5sum}, filename: "{self.filename}">'
         )
 
 
 class PakDumper(object):
-    def __init__(
-        self,
-        inputpath: Path,
-        outputpath: Path,
-        fast: bool,
-        force: bool,
-        filedir: Optional[Path] = None,
-    ) -> None:
+    def __init__(self, inputpath: Path, outputpath: Path, force: bool) -> None:
         self.inputpath = inputpath
         self.outputpath = outputpath
         self.packinfo_path = self.find_pakinfo()
         self.entries = self.parse_pack_data()
         self.packlist = self.generate_packlist()
         self.crc32_table = self.generate_crc32_table()
-        self.fast = fast
         self.force = force
-        self.filedir = filedir
 
     def get_md5sum(self, data: bytearray) -> str:
         md5 = hashlib.md5()
         md5.update(data)
         return md5.digest().hex()
 
-    def rol(self, val: int, r_bits: int) -> int:
-        return (val << r_bits) & 0xFFFFFFFF | ((val & 0xFFFFFFFF) >> (32 - r_bits))
-
     def decrypt(self, data: bytearray, entry: PackInfo) -> bytearray:
         """
         Decrypt extracted data
         """
-        if self.fast:
-            # Use a Cython module for fast decryption
-            pakdec.decrypt(data, len(data), entry.crc32, entry.crc16)
-            return data
-
-        key = entry.crc32
-        key2 = entry.crc16
-
-        for i in range(0, int(len(data) / 4) * 4, 4):
-            key = self.rol(key + key2, 3)
-
-            data[i] ^= key & 0x00FF
-            data[i + 1] ^= (key >> 8) & 0x00FF
-            data[i + 2] ^= (key >> 16) & 0x00FF
-            data[i + 3] ^= (key >> 24) & 0x00FF
-
-        i += 4
-
-        key = self.rol(key + key2, 3)
-        parts = [key & 0xFF, (key >> 8) & 0xFF, (key >> 16) & 0xFF, (key >> 24) & 0xFF]
-        for j in range(len(data) - i):
-            data[i] ^= parts[j]
-
+        # Use a Cython module for fast decryption
+        pakdec.decrypt(data, len(data), entry.crc32, entry.crc16)
         return data
 
     def extract_data_mem(self, key: int) -> Optional[bytearray]:
@@ -183,39 +150,26 @@ class PakDumper(object):
         """
         crc32 = self.calculate_filename_crc32(filepath)
         crc16 = self.calculate_filename_crc16(filepath)
-        exists = crc32 in self.entries and self.entries[crc32].crc16 in crc16
+        exists = crc32 in self.entries and self.entries[crc32].crc16 == crc16
 
         if exists:
             self.entries[crc32].filename = str(filepath)
             logger.debug(self.entries[crc32])
-            if crc16[0] == self.entries[crc32].crc16:
-                logger.debug("Matches CRC16 Key 1")
-            else:
-                logger.debug("Matches CRC16 Key 2")
 
         return exists
 
-    def calculate_filename_crc16(self, filename: Path) -> Tuple[int, int]:
+    def calculate_filename_crc16(self, filename: Path) -> int:
         """
         Calculate 2 variations of the crc16 filename hash
         """
         filebytes = bytearray(str(filename), "ASCII")
-        crc16_sum_1 = 0xFFFF
-        crc16_sum_2 = 0x0000
+        crc16 = 0xFFFF
         for b in filebytes:
-            crc16_sum_1 = (
-                (crc16_sum_1 >> 8)
-                ^ CRC16_CCITT_TABLE_REVERSE[(crc16_sum_1 ^ b) & 0x00FF]
-            ) & 0xFFFF
-            crc16_sum_2 = (
-                (crc16_sum_2 << 8) & 0xFF00
-                ^ CRC16_CCITT_TABLE[((crc16_sum_2 >> 8) & 0x00FF) ^ b]
+            crc16 = (
+                (crc16 >> 8) ^ CRC16_CCITT_TABLE_REVERSE[(crc16 ^ b) & 0x00FF]
             ) & 0xFFFF
 
-        crc16_sum_1 = ~crc16_sum_1 & 0xFFFF
-        crc16_sum_2 = crc16_sum_2 & 0xFFFF
-
-        return crc16_sum_1, crc16_sum_2
+        return ~crc16 & 0xFFFF
 
     def calculate_filename_crc32(self, filename: Path) -> int:
         """
@@ -239,7 +193,7 @@ class PakDumper(object):
             )
         return ~crc32_sum & 0xFFFFFFFF
 
-    def generate_crc32_table(self):
+    def generate_crc32_table(self) -> List[int]:
         """
         Generate a crc32 table. Used fo calculating the filename hash
 

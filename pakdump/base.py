@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Optional, Sequence, Union
 
 from .dumper import PakDumper
-from .filegen import bruteforce_filenames
+from .filegen import DEFAULT_FILELIST_PATH, load_filelist, test_filename
 
 
 logger = logging.getLogger(__name__)
@@ -12,14 +12,37 @@ logger = logging.getLogger(__name__)
 
 def main(args: Optional[Sequence[str]] = None) -> None:
     p_args = parse_args(args)
-    logging.basicConfig(level=p_args.log_level)
+    logging.basicConfig(
+        level=p_args.log_level,
+        format="[ %(asctime)s | %(levelname)-8s | %(name)s ]\n%(message)s",
+    )
 
     # Create a dumper object, and dump the data
-    dumper = PakDumper(p_args.input, p_args.output, p_args.fast, p_args.force)
-    bruteforce_filenames(dumper)
+    dumper = PakDumper(p_args.input, p_args.output, p_args.force)
 
-    # Dump the data
-    dumper.dump()
+    if p_args.test_filepath != []:
+        for filepath in p_args.test_filepath:
+            # Test a file, print the result and exit
+            exists = test_filename(dumper, filepath)
+
+            if exists:
+                print(f"Filepath exists: {filepath}")
+            else:
+                print(f"Filepath does not exist: {filepath}")
+    else:
+        # Gen all the files and dump
+        load_filelist(dumper, filepath=p_args.filelist_path)
+
+        # Dump only if this isn't a dry run
+        if not p_args.dryrun:
+            dumper.dump()
+        else:
+            found = len(
+                [1 for k in dumper.entries if dumper.entries[k].filename is not None]
+            )
+            print(f"Total files: {len(dumper.entries)}")
+            print(f"Files found: {found}")
+            print(f"    Missing: {len(dumper.entries) - found}")
 
 
 def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -44,7 +67,12 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         help="Path to output directory. Defaults to your current working directory",
     )
     parser.add_argument(
-        "-t", "--fast", action="store_true", help="Use Cython decryption code"
+        "-t",
+        "--test-filepath",
+        type=Path,
+        default=[],
+        nargs="+",
+        help="Test a single file path to see if it exists in the pack data",
     )
     parser.add_argument(
         "-f",
@@ -52,12 +80,27 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="write out all extracted files even if they already exist",
     )
+    parser.add_argument(
+        "-p",
+        "--filelist-path",
+        action=FullDirPath,
+        type=Path,
+        default=DEFAULT_FILELIST_PATH,
+        help="Path to list of files to extract",
+    )
+    parser.add_argument(
+        "-r",
+        "--dryrun",
+        action="store_true",
+        help="Perform a dry run. Don't actually extract any files",
+    )
 
     logger_group_parent = parser.add_argument_group(
         title="logging arguments",
         description="Control what log level the log outputs (default: logger.ERROR)",
     )
     logger_group = logger_group_parent.add_mutually_exclusive_group()
+    default_log_level = logging.ERROR
 
     logger_group.add_argument(
         "-d",
@@ -65,7 +108,7 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         dest="log_level",
         action="store_const",
         const=logging.DEBUG,
-        default=logging.ERROR,
+        default=default_log_level,
         help="Set log level to DEBUG",
     )
     logger_group.add_argument(
@@ -74,7 +117,7 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         dest="log_level",
         action="store_const",
         const=logging.INFO,
-        default=logging.ERROR,
+        default=default_log_level,
         help="Set log level to INFO",
     )
 
