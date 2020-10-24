@@ -1,6 +1,21 @@
-from recommonmark.transform import AutoStructify
+import sys
+from pathlib import Path
 
-from pakdump import __version__
+
+# Insert the base path so sphinx can find all the files
+build_path = str(Path(__file__).parent.parent.resolve())
+sys.path.insert(0, build_path)
+
+
+from recommonmark.parser import CommonMarkParser  # noqa: E402
+from recommonmark.transform import AutoStructify  # noqa: E402
+
+from pakdump import __version__  # noqa: E402
+
+
+class CustomCommonMarkParser(CommonMarkParser):
+    def visit_document(self, *args, **kwargs):
+        pass
 
 
 # Sphinx Base --------------------------------------------------------------------------
@@ -16,8 +31,6 @@ extensions = [
     "sphinx.ext.viewcode",
     # https://sphinx-autoapi.readthedocs.io/en/latest/
     "autoapi.extension",
-    # https://github.com/rtfd/recommonmark
-    "recommonmark",
     # https://github.com/invenia/sphinxcontrib-runcmd
     "sphinxcontrib.runcmd",
 ]
@@ -66,9 +79,9 @@ napoleon_use_param = False
 # Sphinx Extension AutoAPI -------------------------------------------------------------
 autoapi_type = "python"
 autoapi_dirs = ["../pakdump/"]
-autoapi_template_dir = "docs/autoapi_templates"
+autoapi_template_dir = "./autoapi_templates"
 autoapi_root = "autoapi"
-autoapi_ignore = ["*/pakdump/version.py"]
+# autoapi_ignore = []
 autoapi_add_toctree_entry = False
 autoapi_keep_files = False
 
@@ -82,6 +95,8 @@ def setup(app):
     # Set source filetype(s)
     # Allow .rst files along with .md
     app.add_source_suffix(".rst", "restructuredtext")
+    app.add_source_suffix(".md", "markdown")
+    app.add_source_parser(CustomCommonMarkParser)
 
     # RecommonMark Settings ------------------------------------------------------------
     # Enable the evaluation of rst directive in .md files

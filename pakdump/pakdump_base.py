@@ -47,7 +47,6 @@ def main(args: Optional[Sequence[str]] = None) -> None:
 
 def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description="Dump data from GFDM v8 '.pak' files",
     )
     parser.add_argument(
@@ -97,7 +96,7 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
     logger_group_parent = parser.add_argument_group(
         title="logging arguments",
-        description="Control what log level the log outputs (default: logger.ERROR)",
+        description="Control what log level the log outputs (default: ERROR)",
     )
     logger_group = logger_group_parent.add_mutually_exclusive_group()
     default_log_level = logging.ERROR

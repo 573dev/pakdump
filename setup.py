@@ -54,5 +54,5 @@ setup(
     include_package_data=True,
     tests_require=TEST_DEPS,
     extras_require=EXTRAS,
-    entry_points={"console_scripts": ["pakdump = pakdump.base:main"]},
+    entry_points={"console_scripts": ["pakdump = pakdump.pakdump_base:main"]},
 )
