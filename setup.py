@@ -15,7 +15,7 @@ DOCS_DEPS = [
     "sphinxcontrib-runcmd",
 ]
 CHECK_DEPS = ["isort", "flake8", "flake8-quotes", "pep8-naming", "mypy", "black"]
-REQUIREMENTS: List[str] = []
+REQUIREMENTS = ["lxml"]
 
 EXTRAS = {
     "test": TEST_DEPS,
@@ -54,5 +54,10 @@ setup(
     include_package_data=True,
     tests_require=TEST_DEPS,
     extras_require=EXTRAS,
-    entry_points={"console_scripts": ["pakdump = pakdump.pakdump_base:main"]},
+    entry_points={
+        "console_scripts": [
+            "pakdump = pakdump.pakdump_base:main",
+            "mdbdump = pakdump.mdbdump_base:main",
+        ]
+    },
 )

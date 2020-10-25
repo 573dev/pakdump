@@ -1,10 +1,11 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Any, Optional, Sequence, Union
+from typing import Optional, Sequence
 
 from pakdump.dumper import PakDumper
 from pakdump.filegen import DEFAULT_FILELIST_PATH, load_filelist, test_filename
+from pakdump.utils.ap import FullDirPath
 
 
 logger = logging.getLogger(__name__)
@@ -137,28 +138,6 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         raise argparse.ArgumentTypeError("input must be in the GFDM `data` directory")
 
     return parsed_args
-
-
-class FullDirPath(argparse.Action):
-    """
-    Expand path to abspath and make sure it's a directory
-    """
-
-    def __call__(
-        self,
-        parse: argparse.ArgumentParser,
-        namespace: argparse.Namespace,
-        values: Union[str, Sequence[Any], None],
-        option_string: Optional[str] = None,
-    ) -> None:
-        """
-        Resolve the input path and make sure it doesn't exist (so we can make it
-        later), or that it's a directory.
-        """
-        full_path = Path(str(values)).resolve()
-        if full_path.exists() and not full_path.is_dir():
-            raise argparse.ArgumentTypeError(f"{self.dest} must be a directory")
-        setattr(namespace, self.dest, full_path)
 
 
 if __name__ == "__main__":

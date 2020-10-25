@@ -81,7 +81,6 @@ autoapi_type = "python"
 autoapi_dirs = ["../pakdump/"]
 autoapi_template_dir = "./autoapi_templates"
 autoapi_root = "autoapi"
-# autoapi_ignore = []
 autoapi_add_toctree_entry = False
 autoapi_keep_files = False
 
