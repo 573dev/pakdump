@@ -2,6 +2,10 @@ from pathlib import Path
 
 
 def get_version_number():
+    """
+    Return the current version number
+    """
+
     # This file must exist in the root of the module, as the following code
     # tries to find the module root so that it can find the VERSION file.
     # project_root/
@@ -18,3 +22,6 @@ def get_version_number():
 
 
 __version__ = get_version_number()
+"""
+Current Version
+"""

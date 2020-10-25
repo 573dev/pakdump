@@ -8,9 +8,16 @@ from pakdump.filegen import DEFAULT_FILELIST_PATH, load_filelist, test_filename
 
 
 logger = logging.getLogger(__name__)
+"""
+pakdump.pakdump_base log object
+"""
 
 
 def main(args: Optional[Sequence[str]] = None) -> None:
+    """
+    Dump data from GFDM V8 '.pak' files
+    """
+
     p_args = parse_args(args)
     logging.basicConfig(
         level=p_args.log_level,
@@ -46,8 +53,12 @@ def main(args: Optional[Sequence[str]] = None) -> None:
 
 
 def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    """
+    Parse the arguments
+    """
+
     parser = argparse.ArgumentParser(
-        description="Dump data from GFDM v8 '.pak' files",
+        description="Dump data from GFDM V8 '.pak' files",
     )
     parser.add_argument(
         "-i",

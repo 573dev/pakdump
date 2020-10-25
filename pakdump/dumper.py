@@ -11,9 +11,16 @@ from pakdump.crc import CRC16_CCITT_TABLE_REVERSE
 
 
 logger = logging.getLogger(__name__)
+"""
+pakdump.dumper log object
+"""
 
 
 class PackInfo(object):
+    """
+    Contains all the information for a single entry in the Packinfo.bin file
+    """
+
     def __init__(
         self,
         crc32: int,
@@ -40,6 +47,13 @@ class PackInfo(object):
 
 
 class PakDumper(object):
+    """
+    Keeps track of all the input/output paths, as well as all the info in the pack
+    files.
+
+    Generate entries, calculate CRC values, and extract data.
+    """
+
     def __init__(self, inputpath: Path, outputpath: Path, force: bool) -> None:
         self.inputpath = inputpath
         self.outputpath = outputpath
@@ -50,6 +64,12 @@ class PakDumper(object):
         self.force = force
 
     def get_md5sum(self, data: bytearray) -> str:
+        """
+        Generate and return the MD5 sum for data extracted from the pack files.
+
+        This is used to confirm that the data has been pulled out properly. This serves
+        a secondary purpose to check if the extracted data needs to be de-crypted or not
+        """
         md5 = hashlib.md5()
         md5.update(data)
         return md5.digest().hex()
@@ -63,6 +83,10 @@ class PakDumper(object):
         return data
 
     def extract_data_mem(self, key: int) -> Optional[bytearray]:
+        """
+        Extract the requested data out of the pack files. Decrypt if necessary.
+        """
+
         entry = self.entries[key]
 
         # Make sure the packid exists in the packlist

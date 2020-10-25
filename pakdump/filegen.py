@@ -5,8 +5,14 @@ from pakdump.dumper import PakDumper
 
 
 logger = logging.getLogger(__name__)
+"""
+pakdump.filegen log object
+"""
 
 DEFAULT_FILELIST_PATH = Path(__file__).parent / "filelist.txt"
+"""
+Location of our default filelist
+"""
 
 
 def test_filename(dumper: PakDumper, filename: Path) -> bool:
