@@ -24,8 +24,10 @@ def main(args: Optional[Sequence[str]] = None) -> None:
         format="[ %(asctime)s | %(levelname)-8s | %(name)s ]\n%(message)s",
     )
 
-    mdb = MDB(p_args.input)
-    mdb.export("JSON")
+    mdb = MDB(
+        p_args.input, p_args.output, p_args.force, pretty_print=p_args.pretty_print
+    )
+    mdb.export(p_args.format)
 
 
 def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -59,6 +61,21 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--force",
         action="store_true",
         help="overwrite the drcrypted data even if it already exists",
+    )
+    parser.add_argument(
+        "-t",
+        "--format",
+        type=str,
+        choices=["JSON", "XML"],
+        default="JSON",
+        help="output format",
+    )
+
+    parser.add_argument(
+        "-p",
+        "--pretty-print",
+        action="store_true",
+        help="enable pretty print for the output file",
     )
 
     logger_group_parent = parser.add_argument_group(

@@ -1,6 +1,5 @@
 import codecs
 from os.path import abspath, dirname, join
-from typing import List
 
 from Cython.Build import cythonize
 from setuptools import find_packages, setup
