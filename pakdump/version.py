@@ -1,9 +1,12 @@
 from pathlib import Path
 
 
-def get_version_number():
+def get_version_number() -> str:
     """
     Return the current version number
+
+    Returns:
+        str: The current version number as a string
     """
 
     # This file must exist in the root of the module, as the following code
@@ -22,6 +25,4 @@ def get_version_number():
 
 
 __version__ = get_version_number()
-"""
-Current Version
-"""
+"""Current Version"""

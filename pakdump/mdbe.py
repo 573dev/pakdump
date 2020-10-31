@@ -13,7 +13,20 @@ from lxml.builder import E
 logger = logging.getLogger(__name__)
 
 
-def xe(name: str, body: Any, type: str, count: int = 1) -> E:
+def __xe(name: str, body: Any, type: str, count: int = 1) -> E:
+    """
+    Helper function to build an xml element with `__type` and `__count` attributes if
+    necessary.
+
+    Args:
+        name (str): XML Element Name
+        body (Any): XML Element Body (or text)
+        type (str): type of `body` element (i.e. u8, s32, etc)
+        count (int) = 1: How many elements of `type` exist in `body`
+
+    Returns:
+        XML Element :obj:`E`: Constructed XML Element
+    """
     attrs = {"__type": type}
     if count > 1:
         attrs["__count"] = str(count)
@@ -21,8 +34,25 @@ def xe(name: str, body: Any, type: str, count: int = 1) -> E:
 
 
 class MDBHeader(object):
+    """
+    GFDM V8 MDB (Music DB) Header object. Contains all the header data extracted from
+    `mdbe.bin`.
+
+    Args:
+        id (str): Header Game ID
+        format (int): Header Format Type
+        checksum (int): Header Checksum Value
+        header_size (int): Size of header data in bytes
+        record_size (int): Size of song record in bytes
+        record_number (int): Number of song records contained in the file
+        course_size (int): Size of course data in bytes
+        course_number (int): Number of courses contained in the file
+    """
+
     STRUCT_FORMAT = "<8biihhhhh"
+    """Binary data format. Used in `struct.unpack_from`"""
     DATA_SIZE = 0x40
+    """Size of the header data"""
 
     def __init__(
         self,
@@ -44,8 +74,65 @@ class MDBHeader(object):
         self.course_size = course_size
         self.course_number = course_number
 
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to a dict
+
+        Returns:
+            Dict[str, Any]: Music DB Header as a dict
+        """
+        return {
+            "id": self.id,
+            "format": self.format,
+            "checksum": self.checksum,
+            "header_size": self.header_size,
+            "record_size": self.record_size,
+            "record_number": self.record_number,
+            "course_size": self.course_size,
+            "course_number": self.course_number,
+        }
+
+    def to_xml(self) -> etree:
+        """
+        Convert to an XML tree
+
+        Returns:
+            :class:`lxml.etree`: Music DB Header as XML tree
+        """
+        return E.header(
+            E.data(
+                __xe(
+                    "id", " ".join(map(str, bytearray(self.id, "UTF-8"))), "s8", count=8
+                ),
+                __xe("format", self.format, "s32"),
+                __xe("chksum", self.checksum, "s32"),
+                __xe("header_sz", self.header_size, "s16"),
+                __xe("record_sz", self.record_size, "s16"),
+                __xe("record_nr", self.record_number, "s16"),
+                __xe("course_sz", self.course_size, "s16"),
+                __xe("course_nr", self.course_number, "s16"),
+            )
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f'MDBHeader<id: "{self.id}", format: {self.format}, '
+            f"checksum: {self.checksum}, header_size: {self.header_size}, "
+            f"record_size: {self.record_size}, record_number: {self.record_number}, "
+            f"course_size: {self.course_size}, course_number: {self.course_number}>"
+        )
+
     @classmethod
     def from_byte_data(cls, data: Tuple[Any, ...]) -> MDBHeader:
+        """
+        Build an :class:`.MDBHeader` object from the raw bytes extracted from `mdbe.bin`
+
+        Args:
+            data (Tuple[Any, ...]): Tuple containing the unpacked data
+
+        Returns:
+            :class:`.MDBHeader`: Header object
+        """
         id = bytes(data[0:8]).decode("UTF-8")
         (
             format,
@@ -68,44 +155,18 @@ class MDBHeader(object):
             course_number,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "id": self.id,
-            "format": self.format,
-            "checksum": self.checksum,
-            "header_size": self.header_size,
-            "record_size": self.record_size,
-            "record_number": self.record_number,
-            "course_size": self.course_size,
-            "course_number": self.course_number,
-        }
-
-    def to_xml(self) -> etree:
-        return E.header(
-            E.data(
-                xe(
-                    "id", " ".join(map(str, bytearray(self.id, "UTF-8"))), "s8", count=8
-                ),
-                xe("format", self.format, "s32"),
-                xe("chksum", self.checksum, "s32"),
-                xe("header_sz", self.header_size, "s16"),
-                xe("record_sz", self.record_size, "s16"),
-                xe("record_nr", self.record_number, "s16"),
-                xe("course_sz", self.course_size, "s16"),
-                xe("course_nr", self.course_number, "s16"),
-            )
-        )
-
-    def __repr__(self) -> str:
-        return (
-            f'MDBHeader<id: "{self.id}", format: {self.format}, '
-            f"checksum: {self.checksum}, header_size: {self.header_size}, "
-            f"record_size: {self.record_size}, record_number: {self.record_number}, "
-            f"course_size: {self.course_size}, course_number: {self.course_number}>"
-        )
-
 
 class MDBDifficulty(object):
+    """
+    Holds all the difficulty values for a song for a single instrument.
+
+    Args:
+        beginner (int): Beginner Difficulty Value
+        basic (int): Basic Difficulty Value
+        advanced (int): Advanced Difficulty Value
+        extreme (int): Extreme Difficulty Value
+    """
+
     def __init__(self, beginner: int, basic: int, advanced: int, extreme: int) -> None:
         self.beginner = beginner
         self.basic = basic
@@ -113,6 +174,12 @@ class MDBDifficulty(object):
         self.extreme = extreme
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to a dict
+
+        Returns:
+            Dict[str, Any]: Difficulty as a dict
+        """
         return {
             "beginner": self.beginner,
             "basic": self.basic,
@@ -121,6 +188,12 @@ class MDBDifficulty(object):
         }
 
     def str_values(self) -> str:
+        """
+        Convert to a string
+
+        Returns:
+            str: A space delimited string of all 4 difficulty values
+        """
         return f"{self.beginner} {self.basic} {self.advanced} {self.extreme}"
 
     def __repr__(self) -> str:
@@ -131,6 +204,17 @@ class MDBDifficulty(object):
 
 
 class MDBDifficultyList(object):
+    """
+    Holds all the different :class:`.MDBDifficulty` objects for each instrument. Guitar,
+    Bass, Open, and Drum.
+
+    Args:
+        guitar (:class:`.MDBDifficuly`): Guitar Difficulty
+        bass (:class:`.MDBDifficuly`): Bass Difficulty
+        open_pick (:class:`.MDBDifficuly`): Open Difficulty
+        drum (:class:`.MDBDifficuly`): Drum Difficulty
+    """
+
     def __init__(
         self,
         guitar: MDBDifficulty,
@@ -144,6 +228,12 @@ class MDBDifficultyList(object):
         self.drum = drum
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to a dict
+
+        Returns:
+            Dict[str, Any]: Difficulty List as a dict
+        """
         return {
             "guitar": self.guitar.to_dict(),
             "bass": self.bass.to_dict(),
@@ -152,11 +242,17 @@ class MDBDifficultyList(object):
         }
 
     def to_xml(self) -> etree:
+        """
+        Convert to an XML tree
+
+        Returns:
+            :class:`lxml.etree`: Difficulty List as XML tree
+        """
         body = (
             f"{self.guitar.str_values()} {self.bass.str_values()} "
             f"{self.open_pick.str_values()} {self.drum.str_values()}"
         )
-        return xe("classics_diff_list", body, "u8", count=16)
+        return __xe("classics_diff_list", body, "u8", count=16)
 
     def __repr__(self) -> str:
         return (
@@ -165,13 +261,39 @@ class MDBDifficultyList(object):
         )
 
 
-class MDBSongChartList(object):
-    def __init__(self):
-        pass
-
-
 class MDBSong(object):
+    """
+    Holds all the information for a single GFDM Song
+
+    Args:
+        music_id (int): Music ID
+        difficulty (:class:`.MDBDifficultyList`): Difficulty values
+        pad_diff (int): Unknown
+        seq_flag (int): Unknown (sequence flag?)
+        contain_stat (Tuple[int, int]): Unknown
+        b_long (bool): Song is Long Version
+        b_eemall (bool): Song is an EEmall song
+        bpm (int): Song BPM
+        bpm2 (int): Unknown (maybe highest bpm value in the song)
+        title_ascii (str): ASCII version of the song title. Max 16 chars
+        order_ascii (int): Unknown (Some sort of ascii ordering index)
+        order_kana (int): Unknown (Similar to order ascii but for kana?)
+        category_kana (int): Unknown (Some sort of kana category id?)
+        secret (Tuple[int, int]): Unknown (Designates a secret song?)
+        b_session (bool): Unknown (Maybe designates a session only song?)
+        speed (int): Unknown
+        life (int): Unknown
+        gf_offset (int): Unknown
+        dm_offset (int): Unknown
+        chart_list (List[int]): Unknown
+        origin: (int): Unknown (Version of the game it came out on?)
+        music_type (int): Unknown
+        genre (int): Unknown (some sort of genre sort?)
+        is_remaster (int): Unknown
+    """
+
     STRUCT_FORMAT = "<i16BHH2BBBHH16BHHB2BBBBbb128BBBBB"
+    """Binary data format. Used in `struct.unpack_from`"""
 
     def __init__(
         self,
@@ -227,6 +349,15 @@ class MDBSong(object):
 
     @classmethod
     def from_byte_data(cls, data: Tuple[Any, ...]) -> MDBSong:
+        """
+        Build an :class:`.MDBSong` object from the raw bytes extracted from `mdbe.bin`
+
+        Args:
+            data (Tuple[Any, ...]): Tuple containing the unpacked data
+
+        Returns:
+            :class:`.MDBSong`: Song object
+        """
         # First just split up the tuple in to the different sections
         music_id = data[0]
         diff_list = data[1:17]
@@ -289,6 +420,12 @@ class MDBSong(object):
         )
 
     def to_dict(self) -> dict:
+        """
+        Convert to a dict
+
+        Returns:
+            Dict[str, Any]: Music DB Song as a dict
+        """
         return {
             "music_id": self.music_id,
             "difficulty": self.difficulty.to_dict(),
@@ -317,35 +454,41 @@ class MDBSong(object):
         }
 
     def to_xml(self) -> etree:
+        """
+        Convert to an XML tree
+
+        Returns:
+            :class:`lxml.etree`: Music DB Song as XML tree
+        """
         return E.mdb_data(
-            xe("music_id", self.music_id, "s32"),
+            __xe("music_id", self.music_id, "s32"),
             self.difficulty.to_xml(),
-            xe("pad_diff", self.pad_diff, "u16"),
-            xe("seq_flag", self.seq_flag, "u16"),
-            xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
-            xe("b_long", "1" if self.b_long else "0", "bool"),
-            xe("b_eemall", "1" if self.b_eemall else "0", "bool"),
-            xe("bpm", self.bpm, "u16"),
-            xe("bpm2", self.bpm2, "u16"),
-            xe(
+            __xe("pad_diff", self.pad_diff, "u16"),
+            __xe("seq_flag", self.seq_flag, "u16"),
+            __xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
+            __xe("b_long", "1" if self.b_long else "0", "bool"),
+            __xe("b_eemall", "1" if self.b_eemall else "0", "bool"),
+            __xe("bpm", self.bpm, "u16"),
+            __xe("bpm2", self.bpm2, "u16"),
+            __xe(
                 "title_ascii",
                 "".join(i for i in self.title_ascii if 31 < ord(i) < 127),
                 "str",
             ),
-            xe("order_ascii", self.order_ascii, "u16"),
-            xe("order_kana", self.order_kana, "u16"),
-            xe("category_kana", self.category_kana, "s8"),
-            xe("secret", " ".join(map(str, self.secret)), "u8", count=2),
-            xe("b_session", "1" if self.b_session else "0", "bool"),
-            xe("speed", self.speed, "u8"),
-            xe("life", self.life, "u8"),
-            xe("gf_ofst", self.gf_offset, "s8"),
-            xe("dm_ofst", self.dm_offset, "s8"),
-            xe("chart_list", " ".join(map(str, self.chart_list)), "u8", count=128),
-            xe("origin", self.origin, "u8"),
-            xe("music_type", self.music_type, "u8"),
-            xe("genre", self.genre, "u8"),
-            xe("is_remaster", self.is_remaster, "u8"),
+            __xe("order_ascii", self.order_ascii, "u16"),
+            __xe("order_kana", self.order_kana, "u16"),
+            __xe("category_kana", self.category_kana, "s8"),
+            __xe("secret", " ".join(map(str, self.secret)), "u8", count=2),
+            __xe("b_session", "1" if self.b_session else "0", "bool"),
+            __xe("speed", self.speed, "u8"),
+            __xe("life", self.life, "u8"),
+            __xe("gf_ofst", self.gf_offset, "s8"),
+            __xe("dm_ofst", self.dm_offset, "s8"),
+            __xe("chart_list", " ".join(map(str, self.chart_list)), "u8", count=128),
+            __xe("origin", self.origin, "u8"),
+            __xe("music_type", self.music_type, "u8"),
+            __xe("genre", self.genre, "u8"),
+            __xe("is_remaster", self.is_remaster, "u8"),
         )
 
     def __repr__(self) -> str:
@@ -365,7 +508,20 @@ class MDBSong(object):
 
 
 class MDBCourse(object):
+    """
+    Holds course data for GFDM.
+
+    Note: This is potentially just extra unused data. V8 doesn't have courses.
+
+    Args:
+        course_id (int): Course ID
+        course_flag (int): Unknown
+        music_ids (List[int]): List of songs in the course
+        difficulty (:class:`.MDBDifficultyList`): Difficulty list for the course
+    """
+
     STRUCT_FORMAT = "<iI4i16B"
+    """Binary data format. Used in `struct.unpack_from`"""
 
     def __init__(
         self,
@@ -386,6 +542,12 @@ class MDBCourse(object):
         )
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert to a dict
+
+        Returns:
+            Dict[str, Any]: Music DB Course as a dict
+        """
         return {
             "course_id": self.course_id,
             "course_flag": self.course_flag,
@@ -394,15 +556,30 @@ class MDBCourse(object):
         }
 
     def to_xml(self) -> etree:
+        """
+        Convert to an XML tree
+
+        Returns:
+            :class:`lxml.etree`: Music DB Course as XML tree
+        """
         return E.mdb_course(
-            xe("course_id", self.course_id, "s32"),
-            xe("course_flag", self.course_flag, "u32"),
-            xe("music_id", " ".join(map(str, self.music_ids)), "s32", count=4),
+            __xe("course_id", self.course_id, "s32"),
+            __xe("course_flag", self.course_flag, "u32"),
+            __xe("music_id", " ".join(map(str, self.music_ids)), "s32", count=4),
             self.difficulty.to_xml(),
         )
 
     @classmethod
     def from_byte_data(cls, data: Tuple[Any, ...]) -> MDBCourse:
+        """
+        Build an :class:`.MDBCourse` object from the raw bytes extracted from `mdbe.bin`
+
+        Args:
+            data (Tuple[Any, ...]): Tuple containing the unpacked data
+
+        Returns:
+            :class:`.MDBCourse`: Course object
+        """
         course_id, course_flag = data[0:2]
         music_ids = data[2:6]
         diff_list = data[6:]
@@ -422,10 +599,19 @@ class MDB(object):
     """
     Given a `mdbe.bin` file path, decrypt the data, pull out any relevant info and store
     it.
+
+    Args:
+        input_path (Path): Direct path to `mdbe.bin` file
+        output_path (Path): Directory to output the result to
+        force (bool): Set to true to force writing the output file even if it exists
+        pretty_print (bool) = False: Set to true to pretty print the output file
     """
 
     DECRYPTION_KEY = b"2+.58>;.A"
+    """Part of the decryption process"""
+
     IDENTIFIER = "GF/DMmdb"
+    """Identifier in the header of the file"""
 
     def __init__(
         self,
@@ -447,6 +633,9 @@ class MDB(object):
     def decrypt(self) -> bytearray:
         """
         Open up `mdbe.bin`, decrypt it and return a bytearray of the decrypted data
+
+        Returns:
+            bytearray: Decrypted data
         """
         # Read the file into memory
         input_buffer = bytearray(self.input_path.open("rb").read())
@@ -471,6 +660,9 @@ class MDB(object):
     def build(self) -> None:
         """
         Using the decrypted data, build out all the header, song, and course objects
+
+        Raises:
+            Exception: If input file doesn't have the correct header id
         """
         data = self.decrypted_data
 
@@ -527,6 +719,13 @@ class MDB(object):
         Export the music db in the format of your choice.
 
         By format of your choice, I mean "XML" or "JSON".
+
+        Args:
+            export_type (str) = "JSON": Choose between "XML" and "JSON" for output type
+
+        Raises:
+            Exception: If header is emtpy
+            Exception: If export format is unknown
         """
         if export_type == "JSON":
             header = self.header.to_dict() if self.header is not None else ""

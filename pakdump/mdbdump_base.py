@@ -8,14 +8,15 @@ from pakdump.utils.ap import FullDirPath, FullPath
 
 
 logger = logging.getLogger(__name__)
-"""
-pakdump.mdbdump_base log object
-"""
+"""pakdump.mdbdump_base log object"""
 
 
 def main(args: Optional[Sequence[str]] = None) -> None:
     """
     Decrypt and dump the musicdb from the `mdbe.bin` file from GFDM V8
+
+    Args:
+        args (Optional[Sequence[str]]) = None: Arguments List
     """
 
     p_args = parse_args(args)
@@ -33,6 +34,15 @@ def main(args: Optional[Sequence[str]] = None) -> None:
 def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """
     Parse the arguments
+
+    Args:
+        args (Optional[Sequence[str]]) = None: Arguments List
+
+    Returns:
+        :class:`argparse.Namespace`: Namespace object of all parsed arguments
+
+    Raises:
+        :class:`argparse.ArgumentTypeError`: If input path doesn't point to `mdbe.bin`
     """
 
     parser = argparse.ArgumentParser(

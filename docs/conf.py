@@ -74,7 +74,7 @@ napoleon_numpy_docstring = False
 # Set output style
 napoleon_use_ivar = True
 napoleon_use_rtype = False
-napoleon_use_param = False
+napoleon_use_param = True
 
 # Sphinx Extension AutoAPI -------------------------------------------------------------
 autoapi_type = "python"

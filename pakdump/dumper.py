@@ -11,14 +11,20 @@ from pakdump.crc import CRC16_CCITT_TABLE_REVERSE
 
 
 logger = logging.getLogger(__name__)
-"""
-pakdump.dumper log object
-"""
+"""pakdump.dumper log object"""
 
 
 class PackInfo(object):
     """
     Contains all the information for a single entry in the Packinfo.bin file
+
+    Args:
+        crc32 (int): CRC32 Checksum
+        crc16 (int): CRC16 Checksum
+        packid (int): ID for the pack file that this data is contained in
+        offset (int): File offset in bytes for where to find the data
+        filesize (int): Size of the file in bytes
+        md5sum (int): MD5 sum of the file
     """
 
     def __init__(
@@ -36,7 +42,7 @@ class PackInfo(object):
         self.offset = offset
         self.filesize = filesize
         self.md5sum = md5sum.hex()
-        self.filename = None
+        self.filename = None  # Gets filled in later
 
     def __repr__(self) -> str:
         return (
@@ -52,6 +58,11 @@ class PakDumper(object):
     files.
 
     Generate entries, calculate CRC values, and extract data.
+
+    Args:
+        inputpath (Path): Path to `data` directory
+        outputpath (Path): Path to output directory
+        force (bool): Set to true to overwrite extracted files even if they exist
     """
 
     def __init__(self, inputpath: Path, outputpath: Path, force: bool) -> None:
@@ -69,6 +80,12 @@ class PakDumper(object):
 
         This is used to confirm that the data has been pulled out properly. This serves
         a secondary purpose to check if the extracted data needs to be de-crypted or not
+
+        Args:
+            data (bytearray): File data to calculate the MD5 hash for
+
+        Returns:
+            str: MD5 hash
         """
         md5 = hashlib.md5()
         md5.update(data)
@@ -77,14 +94,29 @@ class PakDumper(object):
     def decrypt(self, data: bytearray, entry: PackInfo) -> bytearray:
         """
         Decrypt extracted data
+
+        Using pakdec (a Cython module) for fast decryption
+
+        Args:
+            data (bytearray): Byte data to decrypt
+            entry (:class:`.PackInfo`): PakInfo object with necessary data required for
+                decryption
+
+        Returns:
+            bytearray: Decrypted data
         """
-        # Use a Cython module for fast decryption
         pakdec.decrypt(data, len(data), entry.crc32, entry.crc16)
         return data
 
     def extract_data_mem(self, key: int) -> Optional[bytearray]:
         """
         Extract the requested data out of the pack files. Decrypt if necessary.
+
+        Args:
+            key (int): Filename key of file to extract
+
+        Returns:
+            Optional[bytearray]: Extracted data or None if it can't be found
         """
 
         entry = self.entries[key]
@@ -101,7 +133,7 @@ class PakDumper(object):
             return None
 
         # Grab the data from the pack
-        logger.info(f"Loading packpath: {packpath}")
+        logger.debug(f"Loading packpath: {packpath}")
         data = bytearray(
             packpath.open("rb").read()[entry.offset : entry.offset + entry.filesize]
         )
@@ -109,8 +141,7 @@ class PakDumper(object):
         # If the data is encrypted, lets decrypt it
         data_md5 = self.get_md5sum(data)
         if data_md5 != entry.md5sum:
-            logger.info(f"Decrypting file: {entry.filename}")
-            logger.debug(f"{data_md5} != {entry.md5sum}")
+            logger.debug(f"Decrypting file: {entry.filename}")
             data = self.decrypt(data, entry)
 
         # Make sure the md5sum matches
@@ -123,7 +154,10 @@ class PakDumper(object):
 
     def extract_data(self, key: int) -> None:
         """
-        Given the file hash key, extract the data and put it in the output dir
+        Given the file hash key, extract the data and write it to the output dir
+
+        Args:
+            key (int): Filename key of file to extract
         """
         data = self.extract_data_mem(key)
 
@@ -142,12 +176,10 @@ class PakDumper(object):
 
         # Only write the data if it doesn't already exist
         if output_path.exists() and not self.force:
-            logger.info(f"File not written. Already exists at: {output_path}")
+            logger.info(f"File already exists: {output_path}")
             return
 
         output_path.open("wb").write(data)
-
-        return
 
     def dump(self) -> None:
         """
@@ -161,6 +193,7 @@ class PakDumper(object):
         for key in sorted_keys:
             entry = self.entries[key]
             if entry.filename is not None:
+                logger.info(f"Extracting File: {entry.filename}")
                 self.extract_data(key)
                 extracted += 1
 
@@ -169,7 +202,14 @@ class PakDumper(object):
 
     def file_exists(self, filepath: Path) -> bool:
         """
-        Determine if the filename exists in the pack data
+        Determine if the filename exists in the pack data.
+        Add the filename to the entry if we find a match.
+
+        Args:
+            filepath (Path): Filepath to check
+
+        Returns:
+            bool: True if file exists in the data
         """
         crc32 = self.calculate_filename_crc32(filepath)
         crc16 = self.calculate_filename_crc16(filepath)
@@ -177,13 +217,20 @@ class PakDumper(object):
 
         if exists:
             self.entries[crc32].filename = str(filepath)
-            logger.debug(self.entries[crc32])
+        else:
+            logger.error(f"Filepath does not exist: {filepath}")
 
         return exists
 
     def calculate_filename_crc16(self, filename: Path) -> int:
         """
-        Calculate 2 variations of the crc16 filename hash
+        Calculate the crc16 filename hash
+
+        Args:
+            filename (Path): Filepath to create the CRC16 for
+
+        Returns:
+            int: CRC16 for filename
         """
         filebytes = bytearray(str(filename), "ASCII")
         crc16 = 0xFFFF
@@ -197,6 +244,11 @@ class PakDumper(object):
     def calculate_filename_crc32(self, filename: Path) -> int:
         """
         Calculate the crc32 filename hash
+        Args:
+            filename (Path): Filepath to create the CRC32 for
+
+        Returns:
+            int: CRC32 for filename
         """
         # Normalize paths to proper formats
         filestr = str(filename)
@@ -221,6 +273,9 @@ class PakDumper(object):
         Generate a crc32 table. Used fo calculating the filename hash
 
         I'm not really sure exactly how this was determined
+
+        Returns:
+            List[int]: CRC32 table
         """
         crc32_table = []
         crc32_constant = 0xEDB88320
@@ -238,6 +293,9 @@ class PakDumper(object):
     def generate_packlist(self) -> Dict[int, Path]:
         """
         Glob through the data folder to find any files matching `packXXXX.pak`
+
+        Returns:
+            Dict[int, Path]: Packid with path
         """
         packlist = list(self.inputpath.glob("**/pack*.pak"))
 
@@ -256,6 +314,9 @@ class PakDumper(object):
     def parse_pack_data(self) -> Dict[int, Any]:
         """
         Parse the data from packinfo.bin
+
+        Returns:
+            Dict[int, Any]: Data dictionary pulled out of the packinfo file
         """
         entries: Dict[int, Any] = {}
 
@@ -285,6 +346,9 @@ class PakDumper(object):
         """
         Find the `packinfo.bin` file. It is expected to be in `data/pack/packinfo.bin`,
         but we will search the whole sub tree for it.
+
+        Returns:
+            Path: Path to the pakinfo.bin file
         """
         logger.debug(f"Searching for `packinfo.bin` in subtree: {self.inputpath}")
         infopaths = list(self.inputpath.glob("**/packinfo.bin"))
@@ -298,6 +362,6 @@ class PakDumper(object):
         # There shouldn't be more than one of these files, but if there is then just
         # grab the last one
         infopath = infopaths[-1]
-        logger.info(f"Found packinfo at: {infopath}")
+        logger.debug(f"Found packinfo at: {infopath}")
 
         return infopath
