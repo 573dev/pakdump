@@ -6,6 +6,30 @@
 
 Dump the data from .pak files for GFDM V8
 
+## Usage
+
+I decided not to push this to PyPI for now, so if you want to use it you can just install it into a virtualenv like so:
+
+```sh
+cd pakdump
+python -m venv venv
+. venv/bin/activate
+
+pip install --upgrade pip
+pip install -e .
+```
+
+Then you can use the two commands: `pakdump` and `mdbdump`.
+Please see the documentation for more information.
+
+## pakdump
+
+Extract files from the GFDM V8 data files.
+
+## mdbdump
+
+Decrypt and extract the data out of the `mbde.bin` data file which can be extracted from the data files with `pakdump`.
+
 ## License
 
 pakdump is provided under an MIT License.
