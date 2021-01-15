@@ -607,7 +607,8 @@ class MDB(object):
         pretty_print (bool) = False: Set to true to pretty print the output file
     """
 
-    DECRYPTION_KEY = b"2+.58>;.A"
+    # DECRYPTION_KEY = b"2+.58>;.A"
+    DECRYPTION_KEY = [0x32, 0x2B, 0x2E, 0x35, 0x38, 0x3E, 0x3B, 0x2E, 0x41]
     """Part of the decryption process"""
 
     IDENTIFIER = "GF/DMmdb"
