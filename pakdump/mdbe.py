@@ -13,7 +13,7 @@ from lxml.builder import E
 logger = logging.getLogger(__name__)
 
 
-def __xe(name: str, body: Any, type: str, count: int = 1) -> E:
+def _xe(name: str, body: Any, type: str, count: int = 1) -> E:
     """
     Helper function to build an xml element with `__type` and `__count` attributes if
     necessary.
@@ -101,16 +101,16 @@ class MDBHeader(object):
         """
         return E.header(
             E.data(
-                __xe(
+                _xe(
                     "id", " ".join(map(str, bytearray(self.id, "UTF-8"))), "s8", count=8
                 ),
-                __xe("format", self.format, "s32"),
-                __xe("chksum", self.checksum, "s32"),
-                __xe("header_sz", self.header_size, "s16"),
-                __xe("record_sz", self.record_size, "s16"),
-                __xe("record_nr", self.record_number, "s16"),
-                __xe("course_sz", self.course_size, "s16"),
-                __xe("course_nr", self.course_number, "s16"),
+                _xe("format", self.format, "s32"),
+                _xe("chksum", self.checksum, "s32"),
+                _xe("header_sz", self.header_size, "s16"),
+                _xe("record_sz", self.record_size, "s16"),
+                _xe("record_nr", self.record_number, "s16"),
+                _xe("course_sz", self.course_size, "s16"),
+                _xe("course_nr", self.course_number, "s16"),
             )
         )
 
@@ -252,7 +252,7 @@ class MDBDifficultyList(object):
             f"{self.guitar.str_values()} {self.bass.str_values()} "
             f"{self.open_pick.str_values()} {self.drum.str_values()}"
         )
-        return __xe("classics_diff_list", body, "u8", count=16)
+        return _xe("classics_diff_list", body, "u8", count=16)
 
     def __repr__(self) -> str:
         return (
@@ -461,34 +461,34 @@ class MDBSong(object):
             :class:`lxml.etree`: Music DB Song as XML tree
         """
         return E.mdb_data(
-            __xe("music_id", self.music_id, "s32"),
+            _xe("music_id", self.music_id, "s32"),
             self.difficulty.to_xml(),
-            __xe("pad_diff", self.pad_diff, "u16"),
-            __xe("seq_flag", self.seq_flag, "u16"),
-            __xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
-            __xe("b_long", "1" if self.b_long else "0", "bool"),
-            __xe("b_eemall", "1" if self.b_eemall else "0", "bool"),
-            __xe("bpm", self.bpm, "u16"),
-            __xe("bpm2", self.bpm2, "u16"),
-            __xe(
+            _xe("pad_diff", self.pad_diff, "u16"),
+            _xe("seq_flag", self.seq_flag, "u16"),
+            _xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
+            _xe("b_long", "1" if self.b_long else "0", "bool"),
+            _xe("b_eemall", "1" if self.b_eemall else "0", "bool"),
+            _xe("bpm", self.bpm, "u16"),
+            _xe("bpm2", self.bpm2, "u16"),
+            _xe(
                 "title_ascii",
                 "".join(i for i in self.title_ascii if 31 < ord(i) < 127),
                 "str",
             ),
-            __xe("order_ascii", self.order_ascii, "u16"),
-            __xe("order_kana", self.order_kana, "u16"),
-            __xe("category_kana", self.category_kana, "s8"),
-            __xe("secret", " ".join(map(str, self.secret)), "u8", count=2),
-            __xe("b_session", "1" if self.b_session else "0", "bool"),
-            __xe("speed", self.speed, "u8"),
-            __xe("life", self.life, "u8"),
-            __xe("gf_ofst", self.gf_offset, "s8"),
-            __xe("dm_ofst", self.dm_offset, "s8"),
-            __xe("chart_list", " ".join(map(str, self.chart_list)), "u8", count=128),
-            __xe("origin", self.origin, "u8"),
-            __xe("music_type", self.music_type, "u8"),
-            __xe("genre", self.genre, "u8"),
-            __xe("is_remaster", self.is_remaster, "u8"),
+            _xe("order_ascii", self.order_ascii, "u16"),
+            _xe("order_kana", self.order_kana, "u16"),
+            _xe("category_kana", self.category_kana, "s8"),
+            _xe("secret", " ".join(map(str, self.secret)), "u8", count=2),
+            _xe("b_session", "1" if self.b_session else "0", "bool"),
+            _xe("speed", self.speed, "u8"),
+            _xe("life", self.life, "u8"),
+            _xe("gf_ofst", self.gf_offset, "s8"),
+            _xe("dm_ofst", self.dm_offset, "s8"),
+            _xe("chart_list", " ".join(map(str, self.chart_list)), "u8", count=128),
+            _xe("origin", self.origin, "u8"),
+            _xe("music_type", self.music_type, "u8"),
+            _xe("genre", self.genre, "u8"),
+            _xe("is_remaster", self.is_remaster, "u8"),
         )
 
     def __repr__(self) -> str:
@@ -563,9 +563,9 @@ class MDBCourse(object):
             :class:`lxml.etree`: Music DB Course as XML tree
         """
         return E.mdb_course(
-            __xe("course_id", self.course_id, "s32"),
-            __xe("course_flag", self.course_flag, "u32"),
-            __xe("music_id", " ".join(map(str, self.music_ids)), "s32", count=4),
+            _xe("course_id", self.course_id, "s32"),
+            _xe("course_flag", self.course_flag, "u32"),
+            _xe("music_id", " ".join(map(str, self.music_ids)), "s32", count=4),
             self.difficulty.to_xml(),
         )
 
