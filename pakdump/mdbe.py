@@ -271,10 +271,11 @@ class MDBSong(object):
         pad_diff (int): Unknown
         seq_flag (int): Unknown (sequence flag?)
         contain_stat (Tuple[int, int]): Unknown
+        first_ver (Tuple[int, int]): Unknown
         b_long (bool): Song is Long Version
         b_eemall (bool): Song is an EEmall song
-        bpm (int): Song BPM
-        bpm2 (int): Unknown (maybe highest bpm value in the song)
+        bpm (int): Minimum Song BPM
+        bpm2 (int): Maximum Song BPM
         title_ascii (str): ASCII version of the song title. Max 16 chars
         order_ascii (int): Unknown (Some sort of ascii ordering index)
         order_kana (int): Unknown (Similar to order ascii but for kana?)
@@ -292,7 +293,34 @@ class MDBSong(object):
         is_remaster (int): Unknown
     """
 
-    STRUCT_FORMAT = "<i16BHH2BBBHH16BHHB2BBBBbb128BBBBB"
+    STRUCT_FORMAT = (
+        "<"
+        "i"  # music_id
+        "16B"  # diff_list
+        "B"  # seq_flag
+        "B"  # pad_diff
+        "2B"  # contain_stat
+        "2B"  # first_ver
+        "B"  # b_long
+        "B"  # b_eemail
+        "H"  # bpm
+        "H"  # bpm2
+        "16B"  # title_ascii
+        "H"  # order_ascii
+        "H"  # order_kana
+        "B"  # category_kana
+        "2B"  # secret
+        "B"  # be_session
+        "B"  # speed
+        "B"  # life
+        "b"  # gf_offset
+        "b"  # dm_offset
+        "128B"  # chart_list
+        "B"  # origin
+        "B"  # music_type
+        "B"  # genre
+        "B"  # is_remaster
+    )
     """Binary data format. Used in `struct.unpack_from`"""
 
     def __init__(
@@ -302,6 +330,7 @@ class MDBSong(object):
         pad_diff: int,
         seq_flag: int,
         contain_stat: Tuple[int, int],
+        first_ver: Tuple[int, int],
         b_long: bool,
         b_eemall: bool,
         bpm: int,
@@ -327,6 +356,7 @@ class MDBSong(object):
         self.pad_diff = pad_diff
         self.seq_flag = seq_flag
         self.contain_stat = contain_stat
+        self.first_ver = first_ver
         self.b_long = b_long
         self.b_eemall = b_eemall
         self.bpm = bpm
@@ -361,28 +391,29 @@ class MDBSong(object):
         # First just split up the tuple in to the different sections
         music_id = data[0]
         diff_list = data[1:17]
-        pad_diff = data[17]
-        seq_flag = data[18]
+        seq_flag = data[17]
+        pad_diff = data[18]
         contain_stat = data[19:21]
-        b_long = data[21]
-        b_eemall = data[22]
-        bpm = data[23]
-        bpm2 = data[24]
-        title_ascii = data[25:40]
-        order_ascii = data[40]
-        order_kana = data[41]
-        category_kana = data[42]
-        secret = data[43:45]
-        b_session = data[45]
-        speed = data[46]
-        life = data[47]
-        gf_offset = data[48]
-        dm_offset = data[49]
-        chart_list = data[50:179]
-        origin = data[179]
-        music_type = data[180]
-        genre = data[181]
-        is_remaster = data[182]
+        first_ver = data[21:23]
+        b_long = data[23]
+        b_eemall = data[24]
+        bpm = data[25]
+        bpm2 = data[26]
+        title_ascii = data[27:43]
+        order_ascii = data[43]
+        order_kana = data[44]
+        category_kana = data[45]
+        secret = data[46:48]
+        b_session = data[48]
+        speed = data[49]
+        life = data[50]
+        gf_offset = data[51]
+        dm_offset = data[52]
+        chart_list = data[53:181]
+        origin = data[181]
+        music_type = data[182]
+        genre = data[183]
+        is_remaster = data[184]
 
         # Create a proper difficulty object
         difficulty = MDBDifficultyList(
@@ -398,8 +429,9 @@ class MDBSong(object):
             pad_diff,
             seq_flag,
             (contain_stat[0], contain_stat[1]),
-            True if b_long == "1" else False,
-            True if b_eemall == "1" else False,
+            (first_ver[0], first_ver[1]),
+            True if b_long == 1 else False,
+            True if b_eemall == 1 else False,
             bpm,
             bpm2,
             bytes(title_ascii).decode("UTF-8").strip(),
@@ -407,7 +439,7 @@ class MDBSong(object):
             order_kana,
             category_kana,
             (secret[0], secret[1]),
-            True if b_session == "1" else False,
+            True if b_session == 1 else False,
             speed,
             life,
             gf_offset,
@@ -432,6 +464,7 @@ class MDBSong(object):
             "pad_diff": self.pad_diff,
             "seq_flag": self.seq_flag,
             "contain_stat": self.contain_stat,
+            "first_ver": self.first_ver,
             "b_long": self.b_long,
             "b_eemall": self.b_eemall,
             "bpm": self.bpm,
@@ -466,6 +499,7 @@ class MDBSong(object):
             _xe("pad_diff", self.pad_diff, "u16"),
             _xe("seq_flag", self.seq_flag, "u16"),
             _xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
+            _xe("first_classic_ver", " ".join(map(str, self.first_ver)), "u8", count=2),
             _xe("b_long", "1" if self.b_long else "0", "bool"),
             _xe("b_eemall", "1" if self.b_eemall else "0", "bool"),
             _xe("bpm", self.bpm, "u16"),
@@ -495,11 +529,12 @@ class MDBSong(object):
         return (
             f"MDBSong<music_id: {self.music_id}, difficulty: {self.difficulty}, "
             f"pad_diff: {self.pad_diff}, seq_flag: {self.seq_flag}, "
-            f"contain_stat: {self.contain_stat}, b_long: {self.b_long}, "
-            f"b_eemall: {self.b_eemall}, bpm: {self.bpm}, bpm2: {self.bpm2}, "
-            f'title_ascii: "{self.title_ascii}", order_ascii: {self.order_ascii}, '
-            f"order_kana: {self.order_kana}, category_kana: {self.category_kana}, "
-            f"secret: {self.secret}, b_session: {self.b_session}, speed: {self.speed}, "
+            f"contain_stat: {self.contain_stat}, first_ver: {self.first_ver}, "
+            f"b_long: {self.b_long}, b_eemall: {self.b_eemall}, bpm: {self.bpm}, "
+            f"bpm2: {self.bpm2}, title_ascii: {self.title_ascii}, "
+            f"order_ascii: {self.order_ascii}, order_kana: {self.order_kana}, "
+            f"category_kana: {self.category_kana}, secret: {self.secret}, "
+            f"b_session: {self.b_session}, speed: {self.speed}, "
             f"life: {self.life}, gf_offset: {self.gf_offset}, "
             f"dm_offset: {self.dm_offset}, chart_list: {self.chart_list}, "
             f"origin: {self.origin}, music_type: {self.music_type}, "
