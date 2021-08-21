@@ -5,7 +5,7 @@ from typing import Optional, Sequence
 
 from pakdump.dumper import PakDumper
 from pakdump.filegen import DEFAULT_FILELIST_PATH, load_filelist
-from pakdump.utils.ap import FullDirPath
+from pakdump.utils.ap import FullDirPath, FullPath
 
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "-p",
         "--filelist-path",
-        action=FullDirPath,
+        action=FullPath,
         type=Path,
         default=DEFAULT_FILELIST_PATH,
         help="Path to list of files to extract",
