@@ -329,8 +329,8 @@ class MDBSong(object):
     Args:
         music_id (int): Music ID
         difficulty (:class:`.MDBDifficultyList`): Difficulty values
-        pad_diff (int): Unknown
         seq_flag (int): Unknown (sequence flag?)
+        pad_diff (int): Unknown
         contain_stat (Tuple[int, int]): Unknown
         first_ver (Tuple[int, int]): Unknown
         b_long (bool): Song is Long Version
@@ -390,8 +390,8 @@ class MDBSong(object):
         self,
         music_id: int,
         difficulty: MDBDifficultyList,
-        pad_diff: int,
         seq_flag: int,
+        pad_diff: int,
         contain_stat: Tuple[int, int],
         first_ver: Tuple[int, int],
         b_long: bool,
@@ -416,8 +416,8 @@ class MDBSong(object):
     ):
         self.music_id = music_id
         self.difficulty = difficulty
-        self.pad_diff = pad_diff
         self.seq_flag = seq_flag
+        self.pad_diff = pad_diff
         self.contain_stat = contain_stat
         self.first_ver = first_ver
         self.b_long = b_long
@@ -443,7 +443,7 @@ class MDBSong(object):
     def to_bytearray(self) -> bytearray:
         buffer = bytearray(self.DATA_SIZE)
 
-        title_diff = 15 - len(self.title_ascii)
+        title_diff = 16 - len(self.title_ascii)
         zero_fill = [0 for x in range(0, title_diff)]
         new_title = bytearray(self.title_ascii.encode("UTF-8")).copy()
         new_title.extend(zero_fill)
@@ -469,9 +469,10 @@ class MDBSong(object):
             self.difficulty.drum.basic,
             self.difficulty.drum.advanced,
             self.difficulty.drum.extreme,
-            self.pad_diff,
             self.seq_flag,
+            self.pad_diff,
             *self.contain_stat,
+            *self.first_ver,
             0x1 if self.b_long else 0x0,
             0x1 if self.b_eemall else 0x0,
             self.bpm,
@@ -497,12 +498,11 @@ class MDBSong(object):
 
     @classmethod
     def from_json(cls, data: Dict[Any, Any]) -> MDBSong:
-
         return MDBSong(
             data["music_id"],
             MDBDifficultyList.from_json(data["difficulty"]),
-            data["pad_diff"],
             data["seq_flag"],
+            data["pad_diff"],
             data["contain_stat"],
             data["first_ver"],
             data["b_long"],
@@ -577,8 +577,8 @@ class MDBSong(object):
         return MDBSong(
             music_id,
             difficulty,
-            pad_diff,
             seq_flag,
+            pad_diff,
             (contain_stat[0], contain_stat[1]),
             (first_ver[0], first_ver[1]),
             True if b_long == 1 else False,
@@ -612,8 +612,8 @@ class MDBSong(object):
         return {
             "music_id": self.music_id,
             "difficulty": self.difficulty.to_dict(),
-            "pad_diff": self.pad_diff,
             "seq_flag": self.seq_flag,
+            "pad_diff": self.pad_diff,
             "contain_stat": self.contain_stat,
             "first_ver": self.first_ver,
             "b_long": self.b_long,
@@ -647,8 +647,8 @@ class MDBSong(object):
         return E.mdb_data(
             _xe("music_id", self.music_id, "s32"),
             self.difficulty.to_xml(),
-            _xe("pad_diff", self.pad_diff, "u16"),
             _xe("seq_flag", self.seq_flag, "u16"),
+            _xe("pad_diff", self.pad_diff, "u16"),
             _xe("contain_stat", " ".join(map(str, self.contain_stat)), "u8", count=2),
             _xe("first_classic_ver", " ".join(map(str, self.first_ver)), "u8", count=2),
             _xe("b_long", "1" if self.b_long else "0", "bool"),
@@ -679,7 +679,7 @@ class MDBSong(object):
     def __repr__(self) -> str:
         return (
             f"MDBSong<music_id: {self.music_id}, difficulty: {self.difficulty}, "
-            f"pad_diff: {self.pad_diff}, seq_flag: {self.seq_flag}, "
+            f"seq_flag: {self.seq_flag}, pad_diff: {self.pad_diff}, "
             f"contain_stat: {self.contain_stat}, first_ver: {self.first_ver}, "
             f"b_long: {self.b_long}, b_eemall: {self.b_eemall}, bpm: {self.bpm}, "
             f"bpm2: {self.bpm2}, title_ascii: {self.title_ascii}, "
