@@ -74,6 +74,25 @@ class MDBHeader(object):
         self.course_size = course_size
         self.course_number = course_number
 
+    def to_bytearray(self) -> bytearray:
+        buffer = bytearray(self.DATA_SIZE)
+
+        struct.pack_into(
+            self.STRUCT_FORMAT,
+            buffer,
+            0,
+            *(self.id.encode("UTF-8")),
+            self.format,
+            self.checksum,
+            self.header_size,
+            self.record_size,
+            self.record_number,
+            self.course_number,
+            self.course_size,
+        )
+
+        return buffer
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert to a dict
@@ -120,6 +139,30 @@ class MDBHeader(object):
             f"checksum: {self.checksum}, header_size: {self.header_size}, "
             f"record_size: {self.record_size}, record_number: {self.record_number}, "
             f"course_size: {self.course_size}, course_number: {self.course_number}>"
+        )
+
+    @classmethod
+    def from_rich_import(cls, songs: int, courses: int) -> MDBHeader:
+        # Notes:
+        # The format probably stays as 0x66 as that's probably an identifier for the v8
+        # mdbe data format.
+        # The checksum seems to be 0x00 in the file I used, so maybe there isn't
+        # actually a checksum for this data.
+        # The DATA_SIZE for MDBSong and MDBCourse is expected to be 4 bytes smaller in
+        # the header reporting. I'm not sure why
+
+        HEADER_FORMAT = 0x66
+        CHECKSUM = 0x00
+
+        return MDBHeader(
+            MDB.IDENTIFIER,
+            HEADER_FORMAT,
+            CHECKSUM,
+            cls.DATA_SIZE,
+            MDBSong.DATA_SIZE - 0x04,
+            songs,
+            MDBCourse.DATA_SIZE - 0x04,
+            courses,
         )
 
     @classmethod
@@ -196,6 +239,15 @@ class MDBDifficulty(object):
         """
         return f"{self.beginner} {self.basic} {self.advanced} {self.extreme}"
 
+    @classmethod
+    def from_json(cls, data: Dict[str, int]) -> MDBDifficulty:
+        return MDBDifficulty(
+            data["beginner"],
+            data["basic"],
+            data["advanced"],
+            data["extreme"],
+        )
+
     def __repr__(self) -> str:
         return (
             f"MDBDifficulty<beginner: {self.beginner}, basic: {self.basic}, "
@@ -254,6 +306,15 @@ class MDBDifficultyList(object):
         )
         return _xe("classics_diff_list", body, "u8", count=16)
 
+    @classmethod
+    def from_json(cls, data: Dict[Any, Any]) -> MDBDifficultyList:
+        return MDBDifficultyList(
+            MDBDifficulty.from_json(data["guitar"]),
+            MDBDifficulty.from_json(data["bass"]),
+            MDBDifficulty.from_json(data["open"]),
+            MDBDifficulty.from_json(data["drum"]),
+        )
+
     def __repr__(self) -> str:
         return (
             f"MDBDifficultyList<guitar: {self.guitar}, bass: {self.bass}, "
@@ -281,7 +342,7 @@ class MDBSong(object):
         order_kana (int): Unknown (Similar to order ascii but for kana?)
         category_kana (int): Unknown (Some sort of kana category id?)
         secret (Tuple[int, int]): Unknown (Designates a secret song?)
-        b_session (bool): Unknown (Maybe designates a session only song?)
+        b_session (int): Unknown
         speed (int): Unknown
         life (int): Unknown
         gf_offset (int): Unknown
@@ -322,6 +383,8 @@ class MDBSong(object):
         "B"  # is_remaster
     )
     """Binary data format. Used in `struct.unpack_from`"""
+    DATA_SIZE = 0xC0
+    """Size of Song Data"""
 
     def __init__(
         self,
@@ -340,7 +403,7 @@ class MDBSong(object):
         order_kana: int,
         category_kana: int,
         secret: Tuple[int, int],
-        b_session: bool,
+        b_session: int,
         speed: int,
         life: int,
         gf_offset: int,
@@ -376,6 +439,92 @@ class MDBSong(object):
         self.music_type = music_type
         self.genre = genre
         self.is_remaster = is_remaster
+
+    def to_bytearray(self) -> bytearray:
+        buffer = bytearray(self.DATA_SIZE)
+
+        title_diff = 15 - len(self.title_ascii)
+        zero_fill = [0 for x in range(0, title_diff)]
+        new_title = bytearray(self.title_ascii.encode("UTF-8")).copy()
+        new_title.extend(zero_fill)
+
+        struct.pack_into(
+            self.STRUCT_FORMAT,
+            buffer,
+            0,
+            self.music_id,
+            self.difficulty.guitar.beginner,
+            self.difficulty.guitar.basic,
+            self.difficulty.guitar.advanced,
+            self.difficulty.guitar.extreme,
+            self.difficulty.bass.beginner,
+            self.difficulty.bass.basic,
+            self.difficulty.bass.advanced,
+            self.difficulty.bass.extreme,
+            self.difficulty.open_pick.beginner,
+            self.difficulty.open_pick.basic,
+            self.difficulty.open_pick.advanced,
+            self.difficulty.open_pick.extreme,
+            self.difficulty.drum.beginner,
+            self.difficulty.drum.basic,
+            self.difficulty.drum.advanced,
+            self.difficulty.drum.extreme,
+            self.pad_diff,
+            self.seq_flag,
+            *self.contain_stat,
+            0x1 if self.b_long else 0x0,
+            0x1 if self.b_eemall else 0x0,
+            self.bpm,
+            self.bpm2,
+            *new_title,
+            self.order_ascii,
+            self.order_kana,
+            self.category_kana,
+            *self.secret,
+            self.b_session,
+            self.speed,
+            self.life,
+            self.gf_offset,
+            self.dm_offset,
+            *self.chart_list,
+            self.origin,
+            self.music_type,
+            self.genre,
+            self.is_remaster,
+        )
+
+        return buffer
+
+    @classmethod
+    def from_json(cls, data: Dict[Any, Any]) -> MDBSong:
+
+        return MDBSong(
+            data["music_id"],
+            MDBDifficultyList.from_json(data["difficulty"]),
+            data["pad_diff"],
+            data["seq_flag"],
+            data["contain_stat"],
+            data["first_ver"],
+            data["b_long"],
+            data["b_eemall"],
+            data["bpm"],
+            data["bpm2"],
+            data["title_ascii"],
+            data["order_ascii"],
+            data["order_kana"],
+            data["category_kana"],
+            data["secret"],
+            data["b_session"],
+            data["speed"],
+            data["life"],
+            data["gf_offset"],
+            data["dm_offset"],
+            data["chart_list"],
+            data["origin"],
+            data["music_type"],
+            data["genre"],
+            data["is_remaster"],
+        )
 
     @classmethod
     def from_byte_data(cls, data: Tuple[Any, ...]) -> MDBSong:
@@ -423,6 +572,8 @@ class MDBSong(object):
             MDBDifficulty(*diff_list[12:16]),
         )
 
+        title_ascii = tuple([a for a in title_ascii if a != 0])
+
         return MDBSong(
             music_id,
             difficulty,
@@ -434,12 +585,12 @@ class MDBSong(object):
             True if b_eemall == 1 else False,
             bpm,
             bpm2,
-            bytes(title_ascii).decode("UTF-8").strip(),
+            bytes(title_ascii).decode("UTF-8"),
             order_ascii,
             order_kana,
             category_kana,
             (secret[0], secret[1]),
-            True if b_session == 1 else False,
+            b_session,
             speed,
             life,
             gf_offset,
@@ -513,7 +664,7 @@ class MDBSong(object):
             _xe("order_kana", self.order_kana, "u16"),
             _xe("category_kana", self.category_kana, "s8"),
             _xe("secret", " ".join(map(str, self.secret)), "u8", count=2),
-            _xe("b_session", "1" if self.b_session else "0", "bool"),
+            _xe("b_session", self.b_session, "u8"),
             _xe("speed", self.speed, "u8"),
             _xe("life", self.life, "u8"),
             _xe("gf_ofst", self.gf_offset, "s8"),
@@ -557,6 +708,8 @@ class MDBCourse(object):
 
     STRUCT_FORMAT = "<iI4i16B"
     """Binary data format. Used in `struct.unpack_from`"""
+    DATA_SIZE = 0x28
+    """Size of the course data"""
 
     def __init__(
         self,
@@ -575,6 +728,36 @@ class MDBCourse(object):
             f"MDBCourse<course_id: {self.course_id}, course_flag: {self.course_flag}, "
             f"music_ids: {self.music_ids}, difficulty: {self.difficulty}>"
         )
+
+    def to_bytearray(self) -> bytearray:
+        buffer = bytearray(self.DATA_SIZE)
+
+        struct.pack_into(
+            self.STRUCT_FORMAT,
+            buffer,
+            0,
+            self.course_id,
+            self.course_flag,
+            *self.music_ids,
+            self.difficulty.guitar.beginner,
+            self.difficulty.guitar.basic,
+            self.difficulty.guitar.advanced,
+            self.difficulty.guitar.extreme,
+            self.difficulty.bass.beginner,
+            self.difficulty.bass.basic,
+            self.difficulty.bass.advanced,
+            self.difficulty.bass.extreme,
+            self.difficulty.open_pick.beginner,
+            self.difficulty.open_pick.basic,
+            self.difficulty.open_pick.advanced,
+            self.difficulty.open_pick.extreme,
+            self.difficulty.drum.beginner,
+            self.difficulty.drum.basic,
+            self.difficulty.drum.advanced,
+            self.difficulty.drum.extreme,
+        )
+
+        return buffer
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -602,6 +785,15 @@ class MDBCourse(object):
             _xe("course_flag", self.course_flag, "u32"),
             _xe("music_id", " ".join(map(str, self.music_ids)), "s32", count=4),
             self.difficulty.to_xml(),
+        )
+
+    @classmethod
+    def from_json(cls, data: Dict[Any, Any]) -> MDBCourse:
+        return MDBCourse(
+            data["course_id"],
+            data["course_flag"],
+            data["music_ids"],
+            MDBDifficultyList.from_json(data["difficulty"]),
         )
 
     @classmethod
@@ -642,8 +834,8 @@ class MDB(object):
         pretty_print (bool) = False: Set to true to pretty print the output file
     """
 
-    # DECRYPTION_KEY = b"2+.58>;.A"
-    DECRYPTION_KEY = [0x32, 0x2B, 0x2E, 0x35, 0x38, 0x3E, 0x3B, 0x2E, 0x41]
+    # ENCRYPTION_KEY = b"2+.58>;.A"
+    ENCRYPTION_KEY = [0x32, 0x2B, 0x2E, 0x35, 0x38, 0x3E, 0x3B, 0x2E, 0x41]
     """Part of the decryption process"""
 
     IDENTIFIER = "GF/DMmdb"
@@ -659,12 +851,50 @@ class MDB(object):
         self.input_path = input_path
         self.output_path = output_path
         self.force = force
+        self.decrypted_data: Optional[bytearray] = None
         self.pretty_print = pretty_print
-        self.decrypted_data = self.decrypt()
         self.header: Optional[MDBHeader] = None
         self.songs: Dict[int, MDBSong] = {}
         self.courses: Dict[int, MDBCourse] = {}
-        self.build()
+
+        if self.input_path.suffix.lower() == ".json":
+            self.rich_import()
+        else:
+            self.decrypted_data = self.decrypt()
+            self.build()
+
+    def apply_encryption_key(
+        self, buffer: Optional[bytearray], decrypt: bool = True
+    ) -> bytearray:
+        """
+        Apply the ENCRYPTION KEY to the raw data to decrypt, or apply it to the
+        decrypted data to encrypt.
+
+        Returns:
+            bytearray: Either the encrypted or decrypted data
+        """
+        if buffer is None:
+            logger.error("Buffer is None, can not apply encryption key")
+            return bytearray(0)
+
+        bufflen = len(buffer)
+
+        # Allocate an output buffer and then decrypt/encrypt into the output buffer
+        output_buffer = bytearray(bufflen)
+
+        for idx in range(0, bufflen):
+            in_idx = bufflen - 1 - idx if decrypt else idx
+            out_idx = idx if decrypt else bufflen - 1 - idx
+
+            byte = buffer[in_idx] ^ (
+                idx
+                + 16 * (idx % 8)
+                + (self.ENCRYPTION_KEY[idx % 9] ^ (9 * (idx // 9) - idx + 127))
+                - 9 * (idx // 9)
+            )
+
+            output_buffer[out_idx] = byte
+        return output_buffer
 
     def decrypt(self) -> bytearray:
         """
@@ -675,23 +905,16 @@ class MDB(object):
         """
         # Read the file into memory
         input_buffer = bytearray(self.input_path.open("rb").read())
+        return self.apply_encryption_key(input_buffer)
 
-        # Allocate an output buffer and then decrypt into the output buffer
-        output_buffer = bytearray(len(input_buffer))
+    def encrypt(self) -> Optional[bytearray]:
+        """
+        Re-Encrypt the Decrypted Data back into its original binary format.
 
-        for cur_idx in range(0, len(input_buffer)):
-            dec_byte = input_buffer[len(input_buffer) - 1 - cur_idx] ^ (
-                cur_idx
-                + 16 * (cur_idx % 8)
-                + (
-                    self.DECRYPTION_KEY[cur_idx % 9]
-                    ^ (9 * (cur_idx // 9) - cur_idx + 127)
-                )
-                - 9 * (cur_idx // 9)
-            )
-            output_buffer[cur_idx] = dec_byte
-
-        return output_buffer
+        Returns:
+            bytearray: Encrypted data
+        """
+        return self.apply_encryption_key(self.decrypted_data, decrypt=False)
 
     def build(self) -> None:
         """
@@ -701,6 +924,10 @@ class MDB(object):
             Exception: If input file doesn't have the correct header id
         """
         data = self.decrypted_data
+
+        if data is None:
+            logger.error("Decrypted data doesn't exist, skipping build")
+            return None
 
         # Read in header
         raw_header_data = data[0 : MDBHeader.DATA_SIZE]
@@ -749,6 +976,65 @@ class MDB(object):
             self.courses[course.course_id] = course
 
             count += 1
+
+    def rich_import(self, import_type: str = "JSON") -> None:
+        """
+        Import the music db from "XML" or "JSON" and re-create the header/songs/courses
+        from it as if we read in the original bin file.
+
+        Args:
+            import_type (str) = "JSON": Choose between "XML" and "JSON" for input type
+
+        """
+        with self.input_path.open() as f:
+            jdata = json.load(f)
+
+            mdb = jdata["musicdb"]
+
+        # import songs
+        for key, value in mdb["songs"].items():
+            self.songs[key] = MDBSong.from_json(value)
+
+        # import courses
+        for key, value in mdb["courses"].items():
+            self.courses[key] = MDBCourse.from_json(value)
+
+        # Derive header from loaded in songs and courses
+        self.header = MDBHeader.from_rich_import(len(self.songs), len(self.courses))
+
+        # Create the resulting unencrypted binary data
+        self.decrypted_data = self.create()
+
+        # encrypt the data and write it to a file
+        bin_data = self.encrypt()
+
+        if bin_data is not None:
+            with self.output_path.open("wb") as f:
+                f.write(bin_data)
+
+    def create(self) -> bytearray:
+        """
+        Create the binary unencrypted data from the rich objects we have in this object
+        either from reading in the original MDBE.bin or from reading in MDBE.json or
+        MDBE.xml.
+        """
+
+        if self.header is None:
+            return bytearray(0)
+
+        buffer = bytearray()
+
+        buffer += self.header.to_bytearray()
+
+        for k in self.songs:
+            song = self.songs[k]
+            buffer += song.to_bytearray()
+
+        for k in self.courses:
+            course = self.courses[k]
+            buffer += course.to_bytearray()
+
+        return buffer
 
     def export(self, export_type: str = "JSON") -> None:
         """

@@ -103,5 +103,6 @@ ENV/
 .mypy_cache/
 
 /output/
-mdb.json
-mdb.xml
+mdbe.bin
+*mdb.json
+*mdb.xml

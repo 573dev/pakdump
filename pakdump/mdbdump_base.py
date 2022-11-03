@@ -116,7 +116,7 @@ def parse_args(args: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
     parsed_args = parser.parse_args(args)
 
-    if parsed_args.input.parts[-1] != "mdbe.bin":
+    if not parsed_args.input.parts[-1].endswith("mdbe.bin"):
         raise argparse.ArgumentTypeError('input must be the "mdbe.bin" file')
 
     return parsed_args
