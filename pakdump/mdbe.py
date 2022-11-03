@@ -53,6 +53,16 @@ class MDBHeader(object):
     """Binary data format. Used in `struct.unpack_from`"""
     DATA_SIZE = 0x40
     """Size of the header data"""
+    HEADER_FORMAT = 0x66
+    """
+    The format probably stays as 0x66 as that's probably an identifier for the v8
+    mdbe data format.
+    """
+    CHECKSUM = 0x00
+    """
+    The checksum seems to be 0x00 in the file I used, so maybe there isn't actually a
+    checksum for this data.
+    """
 
     def __init__(
         self,
@@ -144,20 +154,13 @@ class MDBHeader(object):
     @classmethod
     def from_rich_import(cls, songs: int, courses: int) -> MDBHeader:
         # Notes:
-        # The format probably stays as 0x66 as that's probably an identifier for the v8
-        # mdbe data format.
-        # The checksum seems to be 0x00 in the file I used, so maybe there isn't
-        # actually a checksum for this data.
         # The DATA_SIZE for MDBSong and MDBCourse is expected to be 4 bytes smaller in
         # the header reporting. I'm not sure why
 
-        HEADER_FORMAT = 0x66
-        CHECKSUM = 0x00
-
         return MDBHeader(
             MDB.IDENTIFIER,
-            HEADER_FORMAT,
-            CHECKSUM,
+            cls.HEADER_FORMAT,
+            cls.CHECKSUM,
             cls.DATA_SIZE,
             MDBSong.DATA_SIZE - 0x04,
             songs,
