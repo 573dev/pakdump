@@ -1008,9 +1008,18 @@ class MDB(object):
         # encrypt the data and write it to a file
         bin_data = self.encrypt()
 
-        if bin_data is not None:
-            with self.output_path.open("wb") as f:
-                f.write(bin_data)
+        if bin_data is None:
+            return
+
+        # Write output file
+        if not self.output_path.exists() or self.force:
+            print(f"Writing: {self.output_path}")
+            self.output_path.open("wb").write(bin_data)
+        else:
+            logger.error(
+                f'File "{self.output_path}" not written. Please use `-f` to '
+                "overwrite it"
+            )
 
     def create(self) -> bytearray:
         """

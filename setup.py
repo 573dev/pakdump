@@ -57,6 +57,7 @@ setup(
         "console_scripts": [
             "pakdump = pakdump.pakdump_base:main",
             "mdbdump = pakdump.mdbdump_base:main",
+            "mdbcreate = pakdump.mdbcreate_base:main",
         ]
     },
 )
