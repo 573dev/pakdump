@@ -1,3 +1,10 @@
+# ⚠️ This Project is No Longer in Active Development ⚠️
+
+Sorry y'all, I have long since been removed from working on this kind of stuff as I no longer have my own machine, or interest to continue. I am going to 
+archive this project so that the code is accessable, but I wont be making any further changes. Happy coding, and I hope the existence of this can
+help somebody in the future! 
+
+
 # V8 Pak Dump
 [![Build Status](https://github.com/573dev/pakdump/workflows/build/badge.svg)](https://github.com/573dev/pakdump/actions?query=workflow:build)
 [![Documentation Status](https://readthedocs.org/projects/pakdump/badge/?version=latest)](https://pakdump.readthedocs.io/en/latest/?badge=latest)
